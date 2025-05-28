@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Auto Shorts Generator</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2em; background: #f4f4f4; }
+    input, button, textarea { width: 100%; margin-top: 1em; padding: 1em; font-size: 1em; }
+    textarea { height: 200px; }
+    .card { background: white; padding: 1em; border-radius: 8px; box-shadow: 0 0 10px #ccc; margin-top: 2em; }
+  </style>
+</head>
+<body>
+<h1>🎬 Shorts YouTube/TikTok Generator (Gratuit)</h1>
+<p>Colle une URL YouTube avec sous-titres activés (ex: TED Talks)</p>
+
+<input type="text" id="youtubeUrl" placeholder="https://www.youtube.com/watch?v=xxxx" />
+<button onclick="analyze()">Analyser</button>
+
+<div class="card" id="output" style="display: none;">
+  <h2>📋 Résumé</h2>
+  <textarea id="summaryText" readonly></textarea>
+
+  <h2>🔥 Titre viral proposé</h2>
+  <textarea id="titleText" readonly></textarea>
+
+  <h2>🎯 Hook accrocheur (début de vidéo)</h2>
+  <textarea id="hookText" readonly></textarea>
+</div>
+
+<script>
+  async function analyze() {
+    const url = document.getElementById('youtubeUrl').value;
+    const videoId = url.split("v=")[1]?.split("&")[0];
+    if (!videoId) return alert("URL invalide.");
+
+    const captionsUrl = `https://corsproxy.io/?https://video.google.com/timedtext?lang=en&v=${videoId}`;
+
+    try {
+      const res = await fetch(captionsUrl);
+      const xml = await res.text();
+      if (!xml.includes("<text")) throw new Error("Pas de sous-titres trouvés.");
+
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xml, "text/xml");
+      const texts = Array.from(xmlDoc.getElementsByTagName("text"));
+      const fullText = texts.map(t => t.textContent.replace('\n', ' ')).join(' ');
+
+      // Résumé simple (divise en blocs de 60 mots)
+      const sentences = fullText.match(/[^.!?]+[.!?]+/g) || [fullText];
+      let summary = "", temp = "";
+      for (let s of sentences) {
+        if ((temp + s).split(" ").length < 60) {
+          temp += " " + s;
+        } else {
+          summary += "- " + temp.trim() + "\n\n";
+          temp = s;
+        }
+      }
+      summary += "- " + temp.trim();
+
+      // Hook + Titre automatique simple
+      const keywords = ["insane", "secret", "changed my life", "you won't believe", "incredible", "mind-blowing"];
+      const random = keywords[Math.floor(Math.random() * keywords.length)];
+      const title = "This " + random + " moment from this video 🔥";
+      const hook = "Tu savais que ça allait arriver ? Regarde ça 👇";
+
+      document.getElementById('summaryText').value = summary;
+      document.getElementById('titleText').value = title;
+      document.getElementById('hookText').value = hook;
+      document.getElementById('output').style.display = "block";
+    } catch (e) {
+      alert("Erreur : " + e.message);
+    }
+  }
+</script>
+</body>
+</html>
