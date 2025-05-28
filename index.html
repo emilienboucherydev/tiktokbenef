@@ -2,76 +2,235 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Auto Shorts Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Auto Shorts Generator - Modern</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 2em; background: #f4f4f4; }
-    input, button, textarea { width: 100%; margin-top: 1em; padding: 1em; font-size: 1em; }
-    textarea { height: 200px; }
-    .card { background: white; padding: 1em; border-radius: 8px; box-shadow: 0 0 10px #ccc; margin-top: 2em; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Inter', Arial, sans-serif;
+      background: #121212;
+      color: #eee;
+      margin: 0;
+      padding: 2rem;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    h1 {
+      font-weight: 700;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: #00ffc8;
+      text-align: center;
+    }
+    p {
+      color: #aaa;
+      margin-bottom: 2rem;
+      max-width: 480px;
+      text-align: center;
+      font-size: 1rem;
+    }
+    input[type="text"] {
+      width: 100%;
+      max-width: 480px;
+      padding: 1em 1.2em;
+      font-size: 1.1rem;
+      border-radius: 10px;
+      border: none;
+      outline: none;
+      box-shadow: inset 0 0 5px #00ffc8;
+      background: #222;
+      color: #eee;
+      transition: box-shadow 0.3s ease;
+    }
+    input[type="text"]:focus {
+      box-shadow: 0 0 15px #00ffc8;
+    }
+    button {
+      margin-top: 1.2rem;
+      max-width: 480px;
+      padding: 1em 1.2em;
+      font-size: 1.2rem;
+      background: #00ffc8;
+      color: #121212;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 0 10px #00ffc8aa;
+      transition: background-color 0.3s ease;
+    }
+    button:hover:not(:disabled) {
+      background: #00bfa0;
+      box-shadow: 0 0 15px #00bfa0cc;
+    }
+    button:disabled {
+      cursor: not-allowed;
+      background: #00664f;
+      box-shadow: none;
+      color: #555;
+    }
+    .card {
+      background: #1e1e1e;
+      padding: 1.5rem;
+      border-radius: 15px;
+      box-shadow: 0 0 20px #00ffc8aa;
+      margin-top: 2.5rem;
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    textarea {
+      width: 100%;
+      height: 130px;
+      background: #121212;
+      color: #eee;
+      border: 1px solid #00ffc8;
+      border-radius: 10px;
+      padding: 1em;
+      font-family: 'Inter', monospace, monospace;
+      font-size: 1rem;
+      resize: vertical;
+    }
+    h2 {
+      margin: 0 0 0.4rem 0;
+      color: #00ffc8;
+      font-weight: 700;
+      font-size: 1.3rem;
+    }
+    .spinner {
+      border: 4px solid rgba(255,255,255,0.15);
+      border-top: 4px solid #00ffc8;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
-<h1>🎬 Shorts YouTube/TikTok Generator (Gratuit)</h1>
-<p>Colle une URL YouTube avec sous-titres activés (ex: TED Talks)</p>
+  <h1>🎬 Shorts YouTube/TikTok Generator</h1>
+  <p>Colle une URL YouTube avec sous-titres activés (ex: TED Talks). Langues anglaises ou françaises détectées automatiquement.</p>
 
-<input type="text" id="youtubeUrl" placeholder="https://www.youtube.com/watch?v=xxxx" />
-<button onclick="analyze()">Analyser</button>
+  <input type="text" id="youtubeUrl" placeholder="https://www.youtube.com/watch?v=xxxxxxx" autocomplete="off" />
+  <button id="analyzeBtn" onclick="analyze()">Analyser</button>
 
-<div class="card" id="output" style="display: none;">
-  <h2>📋 Résumé</h2>
-  <textarea id="summaryText" readonly></textarea>
+  <div id="loading" style="display:none;">
+    <div class="spinner"></div>
+    <p style="text-align:center; color:#00ffc8;">Chargement des sous-titres...</p>
+  </div>
 
-  <h2>🔥 Titre viral proposé</h2>
-  <textarea id="titleText" readonly></textarea>
+  <div class="card" id="output" style="display:none;">
+    <h2>📋 Résumé</h2>
+    <textarea id="summaryText" readonly></textarea>
 
-  <h2>🎯 Hook accrocheur (début de vidéo)</h2>
-  <textarea id="hookText" readonly></textarea>
-</div>
+    <h2>🔥 Titre viral proposé</h2>
+    <textarea id="titleText" readonly></textarea>
+
+    <h2>🎯 Hook accrocheur (début de vidéo)</h2>
+    <textarea id="hookText" readonly></textarea>
+  </div>
 
 <script>
-  async function analyze() {
-    const url = document.getElementById('youtubeUrl').value;
-    const videoId = url.split("v=")[1]?.split("&")[0];
-    if (!videoId) return alert("URL invalide.");
+  function decodeHtmlEntities(text) {
+    const txt = document.createElement("textarea");
+    txt.innerHTML = text;
+    return txt.value;
+  }
 
-    const captionsUrl = `https://corsproxy.io/?https://video.google.com/timedtext?lang=en&v=${videoId}`;
+  async function fetchCaptions(videoId, lang = 'en') {
+    // Utilise proxy CORS, essaie de récupérer les sous-titres en XML
+    const url = `https://corsproxy.io/?https://video.google.com/timedtext?lang=${lang}&v=${videoId}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Erreur HTTP ${res.status}`);
+    const xml = await res.text();
+    if (!xml.includes("<text")) throw new Error("Pas de sous-titres trouvés pour la langue: " + lang);
+    return xml;
+  }
+
+  function extractTextFromXml(xml) {
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xml, "text/xml");
+    const texts = Array.from(xmlDoc.getElementsByTagName("text"));
+    // Décodage HTML entities + nettoyage
+    return texts.map(t => decodeHtmlEntities(t.textContent.replace(/\n/g, ' '))).join(' ');
+  }
+
+  function createSummary(text) {
+    // découpe en phrases
+    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+    let summary = "", temp = "";
+
+    for (let s of sentences) {
+      if ((temp + s).split(" ").length < 60) {
+        temp += " " + s;
+      } else {
+        summary += "- " + temp.trim() + "\n\n";
+        temp = s;
+      }
+    }
+    summary += "- " + temp.trim();
+    return summary;
+  }
+
+  function generateTitleAndHook() {
+    const keywords = ["insane", "secret", "changed my life", "you won't believe", "incredible", "mind-blowing"];
+    const random = keywords[Math.floor(Math.random() * keywords.length)];
+    const title = "This " + random + " moment from this video 🔥";
+    const hook = "Tu savais que ça allait arriver ? Regarde ça 👇";
+    return {title, hook};
+  }
+
+  async function analyze() {
+    const btn = document.getElementById('analyzeBtn');
+    const output = document.getElementById('output');
+    const loading = document.getElementById('loading');
+    const url = document.getElementById('youtubeUrl').value.trim();
+
+    output.style.display = "none";
+    loading.style.display = "block";
+    btn.disabled = true;
 
     try {
-      const res = await fetch(captionsUrl);
-      const xml = await res.text();
-      if (!xml.includes("<text")) throw new Error("Pas de sous-titres trouvés.");
+      const videoId = url.split("v=")[1]?.split("&")[0];
+      if (!videoId) throw new Error("URL YouTube invalide.");
 
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xml, "text/xml");
-      const texts = Array.from(xmlDoc.getElementsByTagName("text"));
-      const fullText = texts.map(t => t.textContent.replace('\n', ' ')).join(' ');
-
-      // Résumé simple (divise en blocs de 60 mots)
-      const sentences = fullText.match(/[^.!?]+[.!?]+/g) || [fullText];
-      let summary = "", temp = "";
-      for (let s of sentences) {
-        if ((temp + s).split(" ").length < 60) {
-          temp += " " + s;
-        } else {
-          summary += "- " + temp.trim() + "\n\n";
-          temp = s;
-        }
+      // Essayer d'abord l'anglais
+      let xml;
+      try {
+        xml = await fetchCaptions(videoId, 'en');
+      } catch(e1) {
+        // Si erreur, essayer français
+        xml = await fetchCaptions(videoId, 'fr');
       }
-      summary += "- " + temp.trim();
 
-      // Hook + Titre automatique simple
-      const keywords = ["insane", "secret", "changed my life", "you won't believe", "incredible", "mind-blowing"];
-      const random = keywords[Math.floor(Math.random() * keywords.length)];
-      const title = "This " + random + " moment from this video 🔥";
-      const hook = "Tu savais que ça allait arriver ? Regarde ça 👇";
+      const fullText = extractTextFromXml(xml);
+      if (fullText.trim().length === 0) throw new Error("Sous-titres vides.");
+
+      const summary = createSummary(fullText);
+      const {title, hook} = generateTitleAndHook();
 
       document.getElementById('summaryText').value = summary;
       document.getElementById('titleText').value = title;
       document.getElementById('hookText').value = hook;
-      document.getElementById('output').style.display = "block";
-    } catch (e) {
-      alert("Erreur : " + e.message);
+
+      output.style.display = "flex";
+    } catch (error) {
+      alert("Erreur : " + error.message);
+    } finally {
+      loading.style.display = "none";
+      btn.disabled = false;
     }
   }
 </script>
