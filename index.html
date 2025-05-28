@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Auto Shorts Generator - remi--> gay </title>
+  <title>Auto Shorts Generator - remi--> gay</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
     * {
@@ -149,29 +149,38 @@
     return txt.value;
   }
 
-  async function fetchCaptions(videoId, lang = 'en') {
-    // Utilise proxy CORS, essaie de récupérer les sous-titres en XML
-    const url = `https://corsproxy.io/?https://video.google.com/timedtext?lang=${lang}&v=${videoId}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Erreur HTTP ${res.status}`);
-    const xml = await res.text();
-    if (!xml.includes("<text")) throw new Error("Pas de sous-titres trouvés pour la langue: " + lang);
-    return xml;
+  function getVideoId(url) {
+    const regex = /(?:v=|\/)([0-9A-Za-z_-]{11})/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+  }
+
+  async function fetchCaptions(videoId, langs = ['en', 'fr', 'es', 'de', 'it']) {
+    for (const lang of langs) {
+      try {
+        const url = `https://corsproxy.io/?https://video.google.com/timedtext?lang=${lang}&v=${videoId}`;
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const xml = await res.text();
+        if (xml.includes("<text")) return xml;
+      } catch (e) {
+        console.warn(`Erreur pour la langue ${lang}:`, e.message);
+        continue;
+      }
+    }
+    throw new Error("Aucun sous-titre trouvé dans les langues supportées.");
   }
 
   function extractTextFromXml(xml) {
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(xml, "text/xml");
     const texts = Array.from(xmlDoc.getElementsByTagName("text"));
-    // Décodage HTML entities + nettoyage
     return texts.map(t => decodeHtmlEntities(t.textContent.replace(/\n/g, ' '))).join(' ');
   }
 
   function createSummary(text) {
-    // découpe en phrases
     const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
     let summary = "", temp = "";
-
     for (let s of sentences) {
       if ((temp + s).split(" ").length < 60) {
         temp += " " + s;
@@ -203,18 +212,10 @@
     btn.disabled = true;
 
     try {
-      const videoId = url.split("v=")[1]?.split("&")[0];
-      if (!videoId) throw new Error("URL YouTube invalide.");
+      const videoId = getVideoId(url);
+      if (!videoId) throw new Error("URL YouTube invalide ou non reconnue.");
 
-      // Essayer d'abord l'anglais
-      let xml;
-      try {
-        xml = await fetchCaptions(videoId, 'en');
-      } catch(e1) {
-        // Si erreur, essayer français
-        xml = await fetchCaptions(videoId, 'fr');
-      }
-
+      const xml = await fetchCaptions(videoId);
       const fullText = extractTextFromXml(xml);
       if (fullText.trim().length === 0) throw new Error("Sous-titres vides.");
 
